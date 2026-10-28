@@ -37,32 +37,63 @@ void main_task(__unused void *params) {
 
 }
 
-void preemptible_thread() {
-    xSemaphoreTake(semaphore, portMAX_DELAY);
-    for (int i = 0; i<30 ; i++){
-        printf("preemptible_thread running", i);
+void preemptible_thread_low() {
+    while(1) {
+        xSemaphoreTake(semaphore, portMAX_DELAY);
+        for (int i = 0; i<30 ; i++){
+            printf("low thread has sem", i);
+        }
+        xSemaphoreGive(semaphore);
     }
-    xSemaphoreGive(semaphore);
+}
+
+void preemptible_thread_med() {
+    vTaskDelay(500);
+    while(1) {
+        xSemaphoreTake(semaphore, portMAX_DELAY);
+        for (int i = 0; i<30; i++){
+            printf("med thread has sem", i);
+        }
+        xSemaphoreGive(semaphore);
+    }
+}
+
+void preemptible_thread_high() {
+    vTaskDelay(1000);
+    while(1) {
+        xSemaphoreTake(semaphore, portMAX_DELAY);
+        for (int i = 0; i<30 ; i++){
+            printf("high thread has sem", i);
+        }
+        xSemaphoreGive(semaphore);
+    }
 }
 
 void supervisor_thread() {
-    xSemaphoreTake(semaphore, portMAX_DELAY);
-    for (int i = 0; i<30 ; i++) {
-        printf("Supervisor_thread running", i);
+    while(1) { 
+        xSemaphoreTake(semaphore, portMAX_DELAY);
+        for (int i = 0; i<30 ; i++) {
+            printf("Supervisor_thread running", i);
+        }
+        xSemaphoreGive(semaphore);
     }
-    xSemaphoreGive(semaphore);
 }
 
 int main( void )
 {
+    stdio_init_all();
+
     TaskHandle_t main, side;
     semaphore = xSemaphoreCreateBinary();
-    xTaskCreate(preemptible_thread, "lowThread1",
+    xSemaphoreGive(semaphore); // Start available so tasks dont get stuck on init
+    xTaskCreate(preemptible_thread_low, "low",
                 SIDE_TASK_STACK_SIZE, NULL, 1, &side);
-    xTaskCreate(preemptible_thread, "lowThread2",
+    xTaskCreate(preemptible_thread_med  , "med",
                 SIDE_TASK_STACK_SIZE, NULL, 1, &side);
-    xTaskCreate(preemptible_thread, "lowThread3",
+    xTaskCreate(preemptible_thread_high, "high",
                 SIDE_TASK_STACK_SIZE, NULL, 1, &side);
-    xTaskCreate(preemptible_thread, "highThread",
+    xTaskCreate(supervisor_thread, "supervisor",
                 SIDE_TASK_STACK_SIZE, NULL, 4, &main);
+
+    vTaskStartScheduler();
 }
